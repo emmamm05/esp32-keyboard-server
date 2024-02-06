@@ -1,0 +1,6 @@
+CompileFlags:
+  Add: ['-I/usr/local/Cellar/hidapi/0.14.0/include/hidapi', 
+        '-I/usr/local/Cellar/libserialport/0.1.1/include/libserialport',
+        '-L/usr/local/Cellar/hidapi/0.14.0/lib',
+        '-L/usr/local/Cellar/libserialport/0.1.1/lib',
+        '-lhidapi', '-lserialport']
