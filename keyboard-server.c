@@ -20,12 +20,26 @@ void print_buf(unsigned char buf[])
   printf("\n");
 }
 
+void* keychron_read_loop(void *arg)
+{
+  int res;
+	unsigned char buf[HID_BUF_SIZE];
+  hid_device *handle_keychron = (hid_device *)arg;
+  while (1) {
+    printf("Reading from keychron\n");
+    res = hid_read(handle_keychron, buf, HID_BUF_SIZE);
+    print_buf(buf);
+  }
+  return NULL;
+}
+
 int main(int argc, char* argv[])
 {
 	int res;
 	unsigned char buf[HID_BUF_SIZE];
 	wchar_t wstr[MAX_STR];
 	hid_device *handle_keychron, *handle_esp32;
+  pthread_t keychron_thread;
 
 	res = hid_init();
 #if defined(__APPLE__) && HID_API_VERSION >= HID_API_MAKE_VERSION(0, 12, 0)
@@ -58,15 +72,16 @@ int main(int argc, char* argv[])
 	res = hid_get_product_string(handle_esp32, wstr, MAX_STR);
 	printf("Product String: %ls\n", wstr);
 
+  pthread_create(&keychron_thread, NULL, keychron_read_loop, handle_keychron);
+
   while (1){
     printf("Reading from esp32\n");
     res = hid_read(handle_esp32, buf, HID_BUF_SIZE);
     print_buf(buf);
     hid_write(handle_esp32, buf, HID_BUF_SIZE);
-    printf("Reading from keychron\n");
-    res = hid_read(handle_keychron, buf, HID_BUF_SIZE);
-    print_buf(buf);
   }
+
+  pthread_join(keychron_thread, NULL);
 
 	// Close the device
 	hid_close(handle_keychron);
