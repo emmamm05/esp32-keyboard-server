@@ -11,6 +11,7 @@
 
 #define MAX_STR 255
 #define HID_BUF_SIZE 32
+#define KEYCHRON
 
 void print_buf(unsigned char buf[])
 {
@@ -32,6 +33,7 @@ int main(int argc, char* argv[])
 	hid_darwin_set_open_exclusive(0);
 #endif
 
+#ifdef KEYCHRON
   struct hid_device_info* keychron_interface = hid_enumerate(0x3434, 0x0430);
   do {
     if (keychron_interface->usage_page == 0xff60 && keychron_interface->usage == 0x61)
@@ -50,6 +52,7 @@ int main(int argc, char* argv[])
 		hid_exit();
  		return 1;
 	}
+#endif
 
 	handle_esp32 = hid_open(0xac05, 0x0a82, NULL);
 	if (!handle_esp32) {
@@ -58,44 +61,41 @@ int main(int argc, char* argv[])
  		return 1;
 	}
 
+#ifdef KEYCHRON
+  res = hid_get_manufacturer_string(handle_keychron, wstr, MAX_STR);
 	res = hid_get_manufacturer_string(handle_keychron, wstr, MAX_STR);
 	printf("Manufacturer String: %ls\n", wstr);
 	res = hid_get_product_string(handle_keychron, wstr, MAX_STR);
 	printf("Product String: %ls\n", wstr);
+#endif
 
 	res = hid_get_manufacturer_string(handle_esp32, wstr, MAX_STR);
 	printf("Manufacturer String: %ls\n", wstr);
 	res = hid_get_product_string(handle_esp32, wstr, MAX_STR);
 	printf("Product String: %ls\n", wstr);
 
-  hid_set_nonblocking(handle_keychron, 1);
-  hid_set_nonblocking(handle_esp32, 1);
-
   while (1){
     memset(buf, 0, HID_BUF_SIZE);
     res = hid_read(handle_esp32, buf, HID_BUF_SIZE);
-    uint64_t* keys = &buf[3];
-    int blanks = 0;
-    if (*keys){
-      printf("esp32[%d]: ", res);
-      print_buf(buf);
-      hid_write(handle_keychron, buf, HID_BUF_SIZE);
-      blanks = 1;
-    } else if (blanks) {
-      printf("esp32[%d]: ", res);
-      print_buf(buf);
-      hid_write(handle_keychron, buf, HID_BUF_SIZE);
-      blanks = 0;
+    if (res == -1){
+      printf("Fatal esp32: %ls", hid_error(handle_esp32));
+      exit(-1);
     }
-    memset(buf, 0, HID_BUF_SIZE);
-    res = hid_read(handle_keychron, buf, HID_BUF_SIZE);
-    if (*keys){
-      printf("keych[%d]: ", res);
-      print_buf(buf);
+    printf("esp32[%d]: ", res);
+    print_buf(buf);
+  #ifdef KEYCHRON
+    
+    res = hid_write(handle_keychron, buf, HID_BUF_SIZE);
+    if (res == -1){
+      printf("Fatal keychron: %ls", hid_error(handle_keychron));
+      exit(-1);
     }
+  #endif
   }
 
+#ifdef KEYCHRON
 	hid_close(handle_keychron);
+#endif
   hid_close(handle_esp32);
 
 	res = hid_exit();
